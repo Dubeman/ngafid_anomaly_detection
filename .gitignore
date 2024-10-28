@@ -1,0 +1,32 @@
+#ignore data, mlruns, models_pickled, rocket
+data/
+mlruns/
+models_pickled/
+rocket/
+models_pickled/
+results/
+
+
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+*.venv
+*.env
+
+# IDEs
+.vscode/
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
