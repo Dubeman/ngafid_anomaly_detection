@@ -1,0 +1,6 @@
+
+#exclude the data directory
+data/
+models_pickled/
+results/
+mlruns/
