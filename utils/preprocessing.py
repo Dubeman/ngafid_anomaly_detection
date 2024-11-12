@@ -1,28 +1,20 @@
 import pandas as pd
-from statsmodels.tsa.api import VAR
 import numpy as np
+import torch
+import torch.nn.functional as F
+from statsmodels.tsa.api import VAR
 
 FEATURES = ['volt1', 'volt2', 'amp1', 'amp2', 'FQtyL', 'FQtyR', 'E1 FFlow',
             'E1 OilT', 'E1 OilP', 'E1 RPM', 'E1 CHT1', 'E1 CHT2', 'E1 CHT3',
             'E1 CHT4', 'E1 EGT1', 'E1 EGT2', 'E1 EGT3', 'E1 EGT4', 'OAT', 'IAS',
             'VSpd', 'NormAc', 'AltMSL']
 
-# Pad groups with rows < max_seq_len using VAR
 def pad_group_VAR(group, max_seq_len):
-    '''
-    params:
-    group: pd.DataFrame is the group to pad
-    max_seq_len: int is the maximum sequence length to pad to
-
-
-    '''
     model = VAR(group)
     model_fit = model.fit(maxlags=1)
     forecast = model_fit.forecast(group.values[-model_fit.k_ar:], steps=max_seq_len - len(group)) # Forecast the next max_seq_len - len(group) steps
     forecast_df = pd.DataFrame(forecast, columns=group.columns, index=range(len(group), max_seq_len))
-
     return pd.concat([group, forecast_df])
-
 
 def pad_group_constant(group, max_seq_len):
     '''
@@ -38,17 +30,48 @@ def pad_group_constant(group, max_seq_len):
     padding = pd.DataFrame([most_repeated] * (max_seq_len - len(group)), columns=group.columns)
     return pd.concat([group, padding])
 
+def pad_group_interpolate(group, max_seq_len, mode='linear'):
+    '''
+    params:
+    group: pd.DataFrame is the group to pad
+    max_seq_len: int is the maximum sequence length to pad to
+    mode: str is the interpolation mode to use ('linear', 'nearest', etc.)
+    '''
 
-def preprocess_data(data : pd.DataFrame,MAX_SEQ_LEN, group_by='id' , pad_func=pad_group_VAR):
+    # Convert to tensor and add batch and channel dimensions
+    group_tensor = torch.tensor(group.values).unsqueeze(0).transpose(1, 2)  # Shape: [1, n_features, seq_len]
+
+    # Define the desired sequence length and interpolation mode
+    current_seq_len = group_tensor.shape[2]
+    extra_seq_len = max_seq_len - current_seq_len
+
+    # Resize to the desired sequence length using interpolation
+    if extra_seq_len > 0:
+        extra_tensor = F.interpolate(group_tensor, size=current_seq_len + extra_seq_len, mode=mode, align_corners=False)
+        extra_tensor = extra_tensor[:, :, current_seq_len:]  # Get only the extra observations
+    else:
+        extra_tensor = group_tensor[:, :, :0]  # No extra observations needed
+
+    # Concatenate the original tensor with the extra observations
+    resized_tensor = torch.cat((group_tensor, extra_tensor), dim=2)
+
+    # Convert the resized tensor back to a DataFrame
+    resized_df = pd.DataFrame(resized_tensor.squeeze().transpose(0, 1).numpy(), columns=group.columns)
+    return resized_df
+
+def preprocess_data(data: pd.DataFrame, MAX_SEQ_LEN, group_by='id', pad_func=pad_group_VAR, **pad_kwargs):
     # Load the dataset
     labels = data['before_after']
 
     # Define the maximum sequence length
     max_sequence_length = MAX_SEQ_LEN  # Median of the sequence lengths
 
+    #data shape
+    print(f"Data shape: {data.shape}")
+
     # Group the data by 'plane_id'
     grouped_data = data.groupby(group_by, sort=False)
-    print(f"Number of groups: {len(grouped_data)}")
+    # print(f"Number of groups: {len(grouped_data)}")
 
     # Since each id has a unique before_after value, store the label for each id in a np array without disturbing the order
     labels = labels.groupby(data['id'], sort=False).first().values    
@@ -60,13 +83,12 @@ def preprocess_data(data : pd.DataFrame,MAX_SEQ_LEN, group_by='id' , pad_func=pa
     count = 0
 
     for plane_id, group in grouped_data:
-        # print(f"Processing group {count + 1}/{len(grouped_data)} with plane_id: {plane_id}")
-
         # Ensure each group has a unique before_after value
         assert len(group['before_after'].unique()) == 1, f"Group {plane_id} has more than one unique before_after value"
-        
-        # Get the subset of the data
-        group = group[FEATURES]
+
+
+        #input group shape is [seq_len, n_features]
+        # print(f"Group shape: {group.shape}")
 
         # Truncate the group if necessary
         if len(group) > max_sequence_length:
@@ -74,30 +96,30 @@ def preprocess_data(data : pd.DataFrame,MAX_SEQ_LEN, group_by='id' , pad_func=pa
 
         # Pad the group if necessary
         if len(group) < max_sequence_length:
-            group = pad_func(group, max_sequence_length)
+            group = pad_func(group, max_sequence_length, **pad_kwargs)
 
-        padded_sequences.append(group)
+        padded_sequences.append(group[FEATURES].values)
         plane_ids.append(plane_id)
         count += 1
 
     # Convert the list of padded sequences to a 3D numpy array and transpose to get the desired shape
-    padded_sequences_3d = np.stack([seq.values.T for seq in padded_sequences])
-
-    # Print the shapes of the first two sequences to verify
-    # print(f"Shape of the first sequence: {padded_sequences_3d[0].shape}")
-    # print(f"Shape of the second sequence: {padded_sequences_3d[1].shape}")
-
-    # # Verify the shape and data type of the 3D numpy array
-    # print(f"Padded sequences 3D shape: {padded_sequences_3d.shape}")
-    # print(f"Padded sequences 3D data type: {padded_sequences_3d.dtype}")
+    padded_sequences_3d = np.stack([seq.T for seq in padded_sequences])
 
     return padded_sequences_3d, labels
 
+# Example usage
 if __name__ == "__main__":
-    file_path = '/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/planes/cleaned_flights/34_cleaned.csv'
-    data = pd.read_csv(file_path)
-    max_sequence_length = 9930
-    padded_sequences,_ = preprocess_data(data, max_sequence_length)
+    data = pd.read_csv('/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/planes/cleaned_flights/34_cleaned.csv')
+    max_seq_len = 9930
 
-    #save the padded sequences to a file
-    np.save('/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/planes/cleaned_flights/padded_sequences.npy', padded_sequences)
+    # Using VAR padding
+    # padded_sequences_VAR, labels_VAR = preprocess_data(data, max_seq_len, pad_func=pad_group_VAR)
+    # print(f"Padded sequences shape (VAR): {padded_sequences_VAR.shape}")
+
+    # Using constant padding
+    # padded_sequences_const, labels_const = preprocess_data(data, max_seq_len, pad_func=pad_group_constant)
+    # print(f"Padded sequences shape (constant): {padded_sequences_const.shape}")
+
+    # Using interpolation padding
+    padded_sequences_interp, labels_interp = preprocess_data(data, max_seq_len, pad_func=pad_group_interpolate, mode='linear')
+    print(f"Padded sequences shape (interpolate): {padded_sequences_interp.shape}")
