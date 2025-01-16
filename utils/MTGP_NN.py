@@ -207,7 +207,8 @@ def extend_sequence(model, input_seq, num_steps_to_extend):
         next_value = next_value.reshape(1, 1, -1)  # Ensure next_value has the same number of dimensions
         # print("next value shape : ",next_value.shape)
         extended_sequence = np.concatenate((extended_sequence, next_value),axis=1)
-        # print("extended sequnce shape : ",extended_sequence.shape)
+        print("extended sequnce shape : ",extended_sequence.shape(1))
+        # print("total sequence shape : ",extended_sequence.shape+ input_seq.shape)
         input_seq = torch.tensor(extended_sequence[:, -input_seq.size(1):, :], dtype=torch.float32)  # Ensure input_seq has the correct dimensions
         # print("input seq shape : ",input_seq.shape)
     return extended_sequence
@@ -224,70 +225,89 @@ def main():
 
     #Print the original sequence shape
     print(group_values.shape)
-
     # Prepare the data for LSTM
     time_steps = 10
     X, y = create_dataset(group_values, time_steps)
     X = X.reshape(X.shape[0], X.shape[1], X.shape[2])
-    # print(X.shape, y.shape)
 
+    # Split the data into training and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Convert to PyTorch tensors
-    X_train = torch.tensor(X, dtype=torch.float32)
-    y_train = torch.tensor(y, dtype=torch.float32)
+    X_train = torch.tensor(X_train, dtype=torch.float32)
+    y_train = torch.tensor(y_train, dtype=torch.float32)
+    X_val = torch.tensor(X_val, dtype=torch.float32)
+    y_val = torch.tensor(y_val, dtype=torch.float32)
 
     # Create DataLoader
     train_dataset = TensorDataset(X_train, y_train)
+    val_dataset = TensorDataset(X_val, y_val)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-
-    batch = next(iter(train_loader))    
-    # print(batch[0].shape, batch[1].shape)
-    # print(len(train_loader))
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
     # Define the LSTM model
     input_size = X_train.shape[2]
     hidden_size = 50
     output_size = input_size
-    
 
-    model = LSTM(input_size, hidden_size, output_size)
+    model = LSTM(input_size, hidden_size, output_size).to(device)
 
     # Train the model (example training loop)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     num_epochs = 200
+    train_losses = []
+    val_losses = []
+
     for epoch in range(num_epochs):
         model.train()
+        train_loss = 0.0
         for batch_X, batch_y in train_loader:
             batch_X = batch_X.to(device)
             batch_y = batch_y.to(device)
-            # print("batch_X, batch_y")   
-            # print(batch_X.shape, batch_y.shape)
 
             optimizer.zero_grad()
             output = model(batch_X)
-
-            # print("output")
-            # print(output.shape)
             loss = criterion(output, batch_y)
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
 
-        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {loss.item()}')
+        train_loss /= len(train_loader)
+        train_losses.append(train_loss)
 
-    # Extend the sequence
-    num_steps_to_extend = 100
-    input_seq = torch.tensor(group_values[-time_steps:], dtype=torch.float32).unsqueeze(0)
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for batch_X, batch_y in val_loader:
+                batch_X = batch_X.to(device)
+                batch_y = batch_y.to(device)
+                output = model(batch_X)
+                loss = criterion(output, batch_y)
+                val_loss += loss.item()
 
-    print("input sequence shape ",input_seq.shape)
+        val_loss /= len(val_loader)
+        val_losses.append(val_loss)
+
+        print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}')
+
+    # Plot training and validation loss curves
+    plt.figure()
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss Curves')
+    plt.legend()
+    plt.show()
+
+    # Extend the sequence to max_seq_len
+    num_steps_to_extend = max_seq_len - len(group_values)
+    input_seq = torch.tensor(group_values[-time_steps:], dtype=torch.float32).unsqueeze(0).to(device)
     extended_sequence = extend_sequence(model, input_seq, num_steps_to_extend)
 
     # Squeeze the extra dimension from extended_sequence
     extended_sequence = extended_sequence.squeeze(0)
-
-    # Print shapes for debugging
-    print("Final extended sequence shape:", extended_sequence.shape)
-    print("Group values shape:", group_values.shape)
 
     # Combine original and extended sequences
     full_sequence = np.concatenate((group_values, extended_sequence), axis=0)
@@ -297,12 +317,25 @@ def main():
     ax.plot(np.arange(len(group_values)), group_values[:, 0], label='Original Sequence')
     ax.plot(np.arange(len(group_values), len(full_sequence)), full_sequence[len(group_values):, 0], label='Extended Sequence')
     ax.legend()
+    plt.xlabel('Time Steps')
+    plt.ylabel('E1 CHT1')
+    plt.title('Original and Extended Sequences')
     plt.show()
 
+    # Plot the entire predicted sequence overlay
+    predicted_sequence = model(torch.tensor(full_sequence[:time_steps].reshape(1, time_steps, -1), dtype=torch.float32).to(device)).detach().cpu().numpy()
+    for i in range(1, len(full_sequence) - time_steps):
+        next_pred = model(torch.tensor(full_sequence[i:i+time_steps].reshape(1, time_steps, -1), dtype=torch.float32).to(device)).detach().cpu().numpy()
+        predicted_sequence = np.concatenate((predicted_sequence, next_pred), axis=0)
 
-
-
-
+    fig, ax = plt.subplots()
+    ax.plot(np.arange(len(full_sequence)), full_sequence[:, 0], label='Real Sequence')
+    ax.plot(np.arange(len(predicted_sequence)), predicted_sequence[:, 0], label='Predicted Sequence', linestyle='dashed')
+    ax.legend()
+    plt.xlabel('Time Steps')
+    plt.ylabel('E1 CHT1')
+    plt.title('Real vs Predicted Sequence')
+    plt.show()
 
 
 

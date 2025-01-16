@@ -6,11 +6,47 @@ from statsmodels.tsa.api import VAR
 import matplotlib.pyplot as plt
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
+from tqdm import tqdm
 
 FEATURES = ['volt1', 'volt2', 'amp1', 'amp2', 'FQtyL', 'FQtyR', 'E1 FFlow',
             'E1 OilT', 'E1 OilP', 'E1 RPM', 'E1 CHT1', 'E1 CHT2', 'E1 CHT3',
             'E1 CHT4', 'E1 EGT1', 'E1 EGT2', 'E1 EGT3', 'E1 EGT4', 'OAT', 'IAS',
             'VSpd', 'NormAc', 'AltMSL']
+
+
+
+SHAPE = (4096, 23)  # Example shape, adjust as needed
+
+
+def get_dataset(df):
+    ids = df.id.unique()
+
+    sensor_datas = []
+    afters = []
+
+    for id in tqdm(ids):
+        sensor_data = df[df.id == id].iloc[-SHAPE[0]:, :23].values
+        
+        sensor_data = np.pad(sensor_data, ((0, SHAPE[0] - len(sensor_data)), (0, 0)))
+
+        # Convert to PyTorch tensor
+        sensor_data = torch.tensor(sensor_data, dtype=torch.float32)
+
+        after = df[df.id == id]['before_after'].iloc[0]
+
+        sensor_datas.append(sensor_data)
+        afters.append(after)
+
+    # Stack the tensors
+    sensor_datas = torch.stack(sensor_datas)
+    afters = torch.tensor(afters, dtype=torch.float32)
+
+    # Create a PyTorch dataset
+    dataset = torch.utils.data.TensorDataset(sensor_datas, afters)
+
+    return dataset
+
+
 
 def pad_group_VAR(group, max_seq_len):
     model = VAR(group)

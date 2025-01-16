@@ -4,8 +4,9 @@ import mlflow.pytorch
 from utils.preprocessing import preprocess_data, pad_group_constant
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from tsai.all import ROCKET, get_ts_dls, create_rocket_features, L, Learner, accuracy, ShowGraph, LinBnDrop, SigmoidRange, Reshape
+from tsai.all import ROCKET, get_ts_dls, create_rocket_features, L, Learner, accuracy, ShowGraph, LinBnDrop, SigmoidRange, Reshape, Categorize, TSStandardize, get_splits
 from sklearn.linear_model import LogisticRegression, RidgeClassifierCV
+import xgboost as xgb
 import torch
 import numpy as np
 from torch import nn
@@ -23,8 +24,26 @@ class Forecasting:
         padded_sequences, labels = preprocess_data(self.data, MAX_SEQ_LEN, group_by='id', pad_func=pad_group_constant)
         return padded_sequences, labels
 
-    def scale_data(self, data):
-        return self.scaler.fit_transform(data)
+    def create_dataloaders(self, data, labels, batch_size):
+        # Create splits using get_splits
+        splits = get_splits(labels, valid_size=0.15, test_size=0.15, shuffle=False, stratify=False, random_state=23, show_plot=False)
+
+        # Print the splits information
+        print(f"Train split: {len(splits[0])}, Valid split: {len(splits[1])}, Test split: {len(splits[2])}")
+
+        # Print the min and max of the splits
+        print(f"Train split: {min(splits[0])}, {max(splits[0])}, Valid split: {min(splits[1])}, {max(splits[1])}, Test split: {min(splits[2])}, {max(splits[2])}")
+
+        # Create DataLoaders
+        tfms = [None, Categorize()]
+        batch_tfms = [TSStandardize(by_sample=True)]
+        dls = get_ts_dls(data, y=labels, splits=splits[:2], tfms=tfms, drop_last=False, shuffle_train=False, batch_tfms=batch_tfms, bs=batch_size)
+
+        test_dls = get_ts_dls(data, y=labels, splits=splits[2:], tfms=tfms, drop_last=False, shuffle_train=False, batch_tfms=batch_tfms, bs=batch_size)
+        test_dl = test_dls.train
+        
+
+        return dls , test_dl
 
 def lin_zero_init(layer):
     if isinstance(layer, nn.Linear):
@@ -58,21 +77,20 @@ def plot_metrics(metrics):
     plt.title('Training Metrics')
     plt.show()
 
-def train_model(data, labels, model, batch_size, classifier_type='logistic', classifier_args=None, log_mlflow=True):
-    if classifier_args is None:
-        classifier_args = {}
-
-    splits = (list(range(len(data)-18)), list(range(100, len(data))))
-    dls = get_ts_dls(data, y=labels, splits=splits, tfms=None, drop_last=False, shuffle_train=False, batch_tfms=None, bs=batch_size)
+def train_model(dls, model, classifier_type='logistic', log_mlflow=True):
     X_train, y_train = create_rocket_features(dls.train, model)
     X_valid, y_valid = create_rocket_features(dls.valid, model)
+
+    #print the shapes of the training and validation data
+    print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+    print(f"X_valid shape: {X_valid.shape}, y_valid shape: {y_valid.shape}")
 
     if classifier_type == 'fastai':
         # Create FastAI classifier head
         model = create_mlp_head(dls.vars, dls.c, dls.len)
         model.apply(lin_zero_init)
         learn = Learner(dls, model, loss_func=CrossEntropyLoss(), metrics=accuracy)
-        learn.fit_one_cycle(50, lr_max=1e-4)
+        learn.fit(100, lr=1e-3)
 
         # Extract the training and validation losses
         train_losses = [v[0] for v in learn.recorder.values]
@@ -88,56 +106,50 @@ def train_model(data, labels, model, batch_size, classifier_type='logistic', cla
         
         return learn
 
-    best_loss = np.inf
-    Cs = classifier_args.get('Cs', [1.0])
-    eps = classifier_args.get('eps', 1e-8)
-    for i, C in enumerate(Cs):
-        f_mean = X_train.mean(axis=0, keepdims=True)
-        f_std = X_train.std(axis=0, keepdims=True) + eps
-        X_train_tfm2 = (X_train - f_mean) / f_std
-        X_valid_tfm2 = (X_valid - f_mean) / f_std
+    # Normalize the data
+    f_mean = X_train.mean(axis=0, keepdims=True)
+    f_std = X_train.std(axis=0, keepdims=True) + 1e-8
+    X_train_tfm2 = (X_train - f_mean) / f_std
+    X_valid_tfm2 = (X_valid - f_mean) / f_std
 
-        if classifier_type == 'logistic':
-            classifier = LogisticRegression(penalty='l2', C=C, n_jobs=-1)
-        elif classifier_type == 'ridge':
-            classifier = RidgeClassifierCV(alphas=np.logspace(-8, 8, 17))
-        else:
-            raise ValueError("Unsupported classifier type")
+    if classifier_type == 'logistic':
+        classifier = LogisticRegression(penalty='l2', n_jobs=-1)
+    elif classifier_type == 'ridge':
+        classifier = RidgeClassifierCV(alphas=np.logspace(-8, 8, 17))
+    elif classifier_type == 'xgboost':
+        classifier = xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    else:
+        raise ValueError("Unsupported classifier type")
 
-        classifier.fit(X_train_tfm2, y_train)
-        probas = classifier.predict_proba(X_train_tfm2) if classifier_type == 'logistic' else classifier.decision_function(X_train_tfm2)
-        loss = nn.CrossEntropyLoss()(torch.tensor(probas, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long)).item()
-        train_score = classifier.score(X_train_tfm2, y_train)
-        val_score = classifier.score(X_valid_tfm2, y_valid)
-        if loss < best_loss:
-            best_eps = eps
-            best_C = C
-            best_loss = loss
-            best_train_score = train_score
-            best_val_score = val_score
-        print(f"{i:2} eps: {eps:.2E}  C: {C:.2E}  loss: {loss:.5f}  train_acc: {train_score:.5f}  valid_acc: {val_score:.5f}")
+    classifier.fit(X_train_tfm2, y_train)
+    train_score = classifier.score(X_train_tfm2, y_train)
+    val_score = classifier.score(X_valid_tfm2, y_valid)
+    print(f"train_acc: {train_score:.5f}  valid_acc: {val_score:.5f}")
 
-        if log_mlflow:
-            # Log parameters and metrics
-            mlflow.log_param("eps", eps)
-            mlflow.log_param("C", C)
-            mlflow.log_metric("loss", loss)
-            mlflow.log_metric("train_acc", train_score)
-            mlflow.log_metric("valid_acc", val_score)
+    # Get predictions
+    y_train_pred = classifier.predict(X_train_tfm2)
+    y_valid_pred = classifier.predict(X_valid_tfm2)
+
+    # Print actual and predicted labels
+    # print("Actual vs Predicted labels (Train):")
+    # for actual, predicted in zip(y_train[:10], y_train_pred[:10]):
+    #     print(f"Actual: {actual}, Predicted: {predicted}")
+
+    # print("Actual vs Predicted labels (Validation):")
+    # for actual, predicted in zip(y_valid[:10], y_valid_pred[:10]):
+    #     print(f"Actual: {actual}, Predicted: {predicted}")
 
     if log_mlflow:
         # Log the best model
         mlflow.sklearn.log_model(classifier, "model")
 
-    return best_eps, best_C, best_loss, best_train_score, best_val_score
+    return train_score, val_score, classifier
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a model on the plane_34 dataset")
 
     parser.add_argument('--num_kernels', type=int, default=1000, help='Number of kernels to use in the ROCKET model')
-    parser.add_argument('--classifier', type=str, choices=['logistic', 'ridge', 'fastai'], default='logistic', help='Classifier type to use')
-    parser.add_argument('--Cs', type=float, nargs='+', default=[0.01, 0.1, 1, 10, 100], help='List of C values for logistic regression')
-    parser.add_argument('--eps', type=float, default=1e-8, help='Epsilon value for normalization')
+    parser.add_argument('--classifier', type=str, choices=['logistic', 'ridge', 'fastai', 'xgboost'], default='logistic', help='Classifier type to use')
     parser.add_argument('--log_mlflow', action='store_true', help='Flag to log information in MLflow')
     args = parser.parse_args()
 
@@ -157,21 +169,35 @@ if __name__ == "__main__":
 
     model = ROCKET(c_in=23, seq_len=max_seq_len, n_kernels=n_kernels, kss=kss)
 
-    classifier_args = {
-        'Cs': args.Cs,
-        'eps': args.eps
-    }
-
     classifier_type = args.classifier
 
+    dls, test_dl = forecast.create_dataloaders(data, labels, batch_size)
+
+
+
+
     if classifier_type == 'fastai':
-        learn = train_model(data, labels, model, batch_size, classifier_type, classifier_args, log_mlflow=args.log_mlflow)
+        learn  = train_model(dls, model, classifier_type, log_mlflow=args.log_mlflow)
     else:
-        best_eps, best_C, best_loss, best_train_score, best_val_score = train_model(data, labels, model, batch_size, classifier_type, classifier_args, log_mlflow=args.log_mlflow)
+        train_score, val_score, classifier = train_model(dls, model, classifier_type, log_mlflow=args.log_mlflow)
         print('\nBest result:')
-        print('eps: {:.2E}  C: {:.2E}  train_loss: {:.5f}  train_acc: {:.5f}  valid_acc: {:.5f}'.format(best_eps, best_C, best_loss, best_train_score, best_val_score))
+        print(f'train_acc: {train_score:.5f}  valid_acc: {val_score:.5f}')
 
     # Plot metrics after training
     if classifier_type == 'fastai':
         metrics = load_metrics('metrics.json')
         plot_metrics(metrics)
+
+    # Evaluate on test set
+    #print the shapes of the test_dl
+    xb,yb = next(iter(test_dl))
+    print(f"Xb shape: {xb.shape}, yb shape: {yb.shape}")
+
+    if classifier_type == 'fastai':
+        test_score = learn.validate(dl=test_dl)
+        print(f'test_acc: {test_score[1]:.5f}')
+    else:
+
+        X_test, y_test = create_rocket_features(test_dl, model)
+        test_score = classifier.score(X_test, y_test)
+        print(f'test_acc: {test_score:.5f}')

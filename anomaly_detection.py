@@ -36,6 +36,8 @@ def create_mlp_head(n_vars, n_classes, seq_len):
         nn.Linear(512, n_classes)
     )
 
+
+
 def train_model(data, labels, model, max_seq_len, batch_size, n_kernels, kss, classifier_type='logistic', classifier_args=None, log_mlflow=True):
     if classifier_args is None:
         classifier_args = {}
