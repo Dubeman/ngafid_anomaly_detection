@@ -19,6 +19,21 @@ SHAPE = (4096, 23)  # Example shape, adjust as needed
 
 
 def get_dataset(df):
+    """
+    Processes a DataFrame to create a PyTorch dataset.
+    Args:
+        df (pandas.DataFrame): The input DataFrame containing sensor data. 
+                               It must have columns 'id' and 'before_after'.
+    Returns:
+        torch.utils.data.TensorDataset: A PyTorch dataset containing the processed sensor data and labels.
+    The function performs the following steps:
+    1. Extracts unique IDs from the DataFrame.
+    2. For each unique ID, extracts the last SHAPE[0] rows of sensor data (first 23 columns).
+    3. Pads the sensor data if it has fewer than SHAPE[0] rows.
+    4. Converts the sensor data to a PyTorch tensor.
+    5. Extracts the 'before_after' label for each ID.
+    6. Stacks all sensor data tensors and labels into a single PyTorch dataset.
+    """
     ids = df.id.unique()
 
     sensor_datas = []
@@ -45,6 +60,90 @@ def get_dataset(df):
     dataset = torch.utils.data.TensorDataset(sensor_datas, afters)
 
     return dataset
+
+def fix_type(x, y):
+    return x.float(), y.float()
+
+def prepare_for_training(ds, shuffle=False, repeat=False, predict=True, aug=False, batch_size=32, model_type='short_lstm', model_loss_type='bce'):
+    """
+    Prepares the dataset for training by applying various transformations such as shuffling, repeating, and batching.
+
+    Args:
+        ds (Dataset): The dataset to be prepared.
+        shuffle (bool, optional): If True, shuffles the dataset. Defaults to False.
+        repeat (bool, optional): If True, repeats the dataset. Defaults to False.
+        predict (bool, optional): If True, prepares the dataset for prediction. Defaults to True.
+        aug (bool, optional): If True, applies data augmentation. Defaults to False.
+        batch_size (int, optional): The size of the batches. Defaults to 32.
+        model_type (str, optional): The type of model being used. Defaults to 'short_lstm'.
+        model_loss_type (str, optional): The type of loss function being used. Defaults to 'bce'.
+
+    Returns:
+        DataLoader: The prepared dataset wrapped in a DataLoader.
+    """
+    if shuffle:
+        ds = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True, drop_last=True)
+    else:
+        ds = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=True)
+
+    if repeat:
+        ds = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True)
+
+    if not predict:
+        ds = [(x, x) for x, y in ds]
+    else:
+        if model_loss_type == 'bce':
+            ds = [(x, y.view(-1, 1)) for x, y in ds]
+
+    return ds
+
+
+def get_train_and_val_for_fold(folded_datasets, fold, MODEL_LOSS_TYPE, NFOLD, AUGMENT, PREDICT):
+    """
+    Splits the provided datasets into training and validation sets for a given fold and prepares them for training.
+
+    Args:
+        folded_datasets (list): A list of datasets, where each dataset corresponds to a fold.
+        fold (int): The index of the fold to be used as the validation set.
+        MODEL_LOSS_TYPE (str): The type of model loss ('bce' for binary cross-entropy, 'mse' for mean squared error).
+        NFOLD (int): The total number of folds.
+        AUGMENT (bool): Whether to apply data augmentation to the training set.
+        PREDICT (bool): Whether the datasets are being prepared for prediction.
+
+    Returns:
+        tuple: A tuple containing:
+            - train_ds: The training dataset prepared for training.
+            - val_ds: The validation dataset prepared for training.
+            - mse_val_ds: The validation dataset prepared for training if MODEL_LOSS_TYPE is 'mse', otherwise None.
+    """
+
+    predict = True
+
+
+    if MODEL_LOSS_TYPE == 'bce':
+        train = []
+        for i in range(NFOLD):
+            if i == fold:
+                val_ds = folded_datasets[i]
+            else:
+                train.append(folded_datasets[i])
+    elif MODEL_LOSS_TYPE == 'mse':
+        train = []
+        for i in range(NFOLD):
+            if i == fold:
+                val_ds = folded_datasets[i][0].concatenate(folded_datasets[i][1])
+            else:
+                train.append(folded_datasets[i][0])
+
+    train_ds = None
+    for ds in train:
+        train_ds = ds if train_ds is None else train_ds.concatenate(ds)
+
+    mse_val_ds = None if not MODEL_LOSS_TYPE == 'mse' else prepare_for_training(val_ds, shuffle=False,  predict=True)
+    train_ds = prepare_for_training(train_ds, shuffle=True, repeat = True, predict=PREDICT, aug = AUGMENT)
+    val_ds = prepare_for_training(val_ds, shuffle=False,  predict=PREDICT)
+
+    return train_ds, val_ds, mse_val_ds
 
 
 
