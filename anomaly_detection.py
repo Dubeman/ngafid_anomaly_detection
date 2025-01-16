@@ -11,6 +11,7 @@ import numpy as np
 from torch import nn
 from sklearn.model_selection import train_test_split
 
+
 class Forecasting:
     def __init__(self, data, model=None):
         self.data = data

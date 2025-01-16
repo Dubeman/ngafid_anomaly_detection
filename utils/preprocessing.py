@@ -53,7 +53,11 @@ def get_dataset(df):
         afters.append(after)
 
     # Stack the tensors
+
+
     sensor_datas = torch.stack(sensor_datas)
+
+
     afters = torch.tensor(afters, dtype=torch.float32)
 
     # Create a PyTorch dataset
