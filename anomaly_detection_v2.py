@@ -132,14 +132,15 @@ class DataLoading:
 
 
 def main():
-    data_path = "data/NGAFID_MC_C37.csv"
-    data_loading = DataLoading(data_path)
-    data = data_loading.load_data()
-    data = data_loading.min_max_scaling(INPUT_COLUMNS)
-    print(data.head(5))
+        data_path = "data/NGAFID_MC_C37.csv"
+        data_loading = DataLoading(data_path)
+        data = data_loading.load_data()
+        data = data_loading.min_max_scaling(INPUT_COLUMNS)
+        print(data.head(5))
 
-    folded_datasets = data_loading.get_folded_datasets('bce',data,5)
-    train_ds, val_ds, _ = data_loading.get_train_and_val_for_fold(folded_datasets,0,'bce',5,None,False)
+        folded_datasets = data_loading.get_folded_datasets('bce',data,5)
+        print(type(folded_datasets[0]))
+        print(folded_datasets[0])
 
 if __name__ == "__main__":
     main()
