@@ -1,6 +1,9 @@
 '''
 
 Pipeline for training and evaluating a ROCKET model for time series forecasting through batch processing.
+
+Problems: The way the ROCKET classified is trained is not ideal(oc-svm is supposed to be trained all at once).
+ The model is trained batch-wise, which means that the model is not trained on the entire dataset at once. This can lead to the model not learning the entire dataset properly. The model should be trained on the entire dataset at once.
 '''
 
 
