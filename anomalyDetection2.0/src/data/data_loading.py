@@ -5,8 +5,8 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from typing import List, Tuple, Optional, Union
 import torch
-from torch.utils.data import Dataset, DataLoader, TensorDataset
-from utils.preprocessing import get_dataset, prepare_for_training
+
+from .utils.preprocessing import get_dataset, prepare_for_training
 
 # Constants
 INPUT_COLUMNS = [
@@ -17,7 +17,7 @@ INPUT_COLUMNS = [
     'OAT', 'IAS', 'VSpd', 'NormAc', 'AltMSL'
 ]
 
-class BaseAnomalyDataset(Dataset):
+class BaseAnomalyDataset(torch.utils.data.Dataset):
     """Base class for anomaly detection datasets."""
     
     def __init__(self, data: torch.Tensor, labels: Optional[torch.Tensor] = None):
@@ -115,9 +115,9 @@ class DataLoading:
 
         return df
     
-    def get_folded_datasets(self, MODEL_LOSS_TYPE: str, df: pd.DataFrame, NFOLD: int) -> List[Union[TensorDataset, Tuple[TensorDataset, TensorDataset]]]:
+    def get_folded_datasets(self, MODEL_LOSS_TYPE: str, df: pd.DataFrame, NFOLD: int) -> List[Union[torch.utils.data.TensorDataset, Tuple[torch.utils.data.TensorDataset, torch.utils.data.TensorDataset]]]:
         """
-        Create folded datasets for cross-validation.
+        Create folded datasets for cross-validation. Can be used for both binary and multi-class classification and post processed for anomaly detection.
         
         Args:
             MODEL_LOSS_TYPE (str): Type of loss function ('bce' or 'mse')
@@ -172,7 +172,7 @@ class DataLoading:
 
         return train_ds, val_ds, mse_val_ds
     
-    def create_anomaly_normal_loaders(self, folded_datasets: List[TensorDataset], batch_size: int = 32) -> Tuple[DataLoader, DataLoader]:
+    def create_anomaly_normal_loaders(self, folded_datasets: List[torch.utils.data.TensorDataset], batch_size: int = 32) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
         """
         Creates separate DataLoaders for anomaly and normal data.
         
@@ -196,8 +196,8 @@ class DataLoading:
         anomalies_dataset = torch.stack(anomalies)
         normal_dataset = torch.stack(normal_data)
 
-        anomalies_loader = DataLoader(anomalies_dataset, batch_size=batch_size, shuffle=True)
-        normal_loader = DataLoader(normal_dataset, batch_size=batch_size, shuffle=True)
+        anomalies_loader = torch.utils.data.DataLoader(anomalies_dataset, batch_size=batch_size, shuffle=True)
+        normal_loader = torch.utils.data.DataLoader(normal_dataset, batch_size=batch_size, shuffle=True)
         
         return anomalies_loader, normal_loader
     
