@@ -1,36 +1,34 @@
-# NGAFID Data Processor
-
-## Overview
-The NGAFID Data Processor is a tool designed to process and analyze flight data. It provides functionalities to parse, clean, and visualize flight data to help in identifying patterns and anomalies.
-
-## Features
-
-The repo contains a Python script named NGAFID_events_processor.py which is used to preprocess and analyze flight data from the NGAFID (National General Aviation Flight Information Database).
-
-- Parse flight data from CSV files.
-- Clean and preprocess data: Convert data types, drop NaN values, and filter valid data.
-- Generate visualizations: Plot altitude profiles for entire flights and segments.
-- Identify and segment flight data based on altitude and time thresholds.
-
-# Configs
 
 
-## Configuration
+# NGAFID Data Processor  
 
-The configuration file `config.json` allows you to customize the data processing parameters. You can set thresholds for altitude, time, and other parameters to tailor the analysis to your needs.
+## Overview  
+The **NGAFID Data Processor** is a Python-based tool designed to process and analyze flight data from the **National General Aviation Flight Information Database (NGAFID)**. It enables users to parse, clean, and visualize flight data to identify patterns and anomalies effectively.  
 
-### Threshold Definitions
+## Features  
 
-- **CUTOFF**: The minimum altitude value that a flight segment must reach to be considered valid.
-- **TIME_THRESHOLD**: The minimum duration that a flight segment must last to be considered valid. But this has not much use, pretty much the same as "MIN_TIME_STEPS_PER_FILE", was being used as part of a different algorithm
-- **Other Parameters**: Additional parameters that can be set to customize the data processing, such as speed thresholds or specific event markers.
+The repository includes `NGAFID_events_processor.py`, a script for preprocessing and analyzing flight data. The key functionalities include:  
 
+- **Parsing flight data** from CSV files.  
+- **Data cleaning & preprocessing**, including type conversion, NaN removal, and validity filtering.  
+- **Visualization tools** to plot altitude profiles for entire flights and specific segments.  
+- **Flight segmentation**, identifying valid segments based on altitude and time thresholds.  
 
-## Installation
-To install the necessary dependencies, run:
+## Configuration  
+
+The **`config.json`** file allows customization of data processing parameters to tailor the analysis.  
+
+### Threshold Definitions  
+
+- **CUTOFF** – The minimum altitude required for a flight segment to be considered valid.  
+- **TIME_THRESHOLD** – The minimum duration for a valid flight segment. (Similar to `MIN_TIME_STEPS_PER_FILE`, originally used in a different algorithm.)  
+- **Other Parameters** – Additional settings like speed thresholds and event markers.  
+
+## Installation  
+
+Ensure you have Python installed, then install the required dependencies using:  
 
 ```bash
 pip install -r requirements.txt
-```
-## Installation
-To install the necessary dependencies, run requirements.txt
+```  
+
