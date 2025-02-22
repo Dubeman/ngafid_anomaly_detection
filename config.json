@@ -1,0 +1,30 @@
+{
+    "COLUMNS_TO_DROP": ["Lcl Time", "UTCOfst", "Longitude", "Latitude", "Lcl Date", "AtvWpt"],
+    "MIN_TIME_STEPS_PER_FILE": 90,
+    "CUTOFF": 100,
+    "TIME_THRESHOLD": 10,
+    "SAVE_FRAMES_AS_GIF": false,
+    "LAST_PROCESSED_FILE_PATH": "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/last_processed_file_original.txt",
+    "PARAMS_SAVE_FILE_PATH": "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/parameters_original.csv",
+    "FRAMES_DIR": "frames",
+    "LOAD_FOLDER_PATH" : "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned_all_agl",
+    "SAVE_FOLDER_PATH" : "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned",
+    "GIF_SAVE_FOLDER_PATH" : "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/",
+    "CLUSTER_EVENTS_FILE_PATH" : "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/c37_cluster_events.json",
+    
+
+    
+    "EVENT_DEFINITION": { 
+        "event_id": null,
+        "event_cause_text": "",
+        "event_action_text": "",
+        "event_cluster_label": "c37",
+        "before_flights": [],
+        "day_of_flights": [],
+        "after_flights": []
+    },
+
+    "COMBINED_DATA_PATH" : null,
+    "COMBINED_DATA_SAVE_PATH" : null,
+    "FILES_WITH_VALID_ALTMSL_PATH" : null
+}

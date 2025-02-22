@@ -1,0 +1,11 @@
+pandas
+numpy
+glob2
+matplotlib
+scipy
+tk
+logging
+imageio
+csv
+json
+uuid

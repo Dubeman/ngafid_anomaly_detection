@@ -1,0 +1,36 @@
+# NGAFID Data Processor
+
+## Overview
+The NGAFID Data Processor is a tool designed to process and analyze flight data. It provides functionalities to parse, clean, and visualize flight data to help in identifying patterns and anomalies.
+
+## Features
+
+The repo contains a Python script named NGAFID_events_processor.py which is used to preprocess and analyze flight data from the NGAFID (National General Aviation Flight Information Database).
+
+- Parse flight data from CSV files.
+- Clean and preprocess data: Convert data types, drop NaN values, and filter valid data.
+- Generate visualizations: Plot altitude profiles for entire flights and segments.
+- Identify and segment flight data based on altitude and time thresholds.
+
+# Configs
+
+
+## Configuration
+
+The configuration file `config.json` allows you to customize the data processing parameters. You can set thresholds for altitude, time, and other parameters to tailor the analysis to your needs.
+
+### Threshold Definitions
+
+- **CUTOFF**: The minimum altitude value that a flight segment must reach to be considered valid.
+- **TIME_THRESHOLD**: The minimum duration that a flight segment must last to be considered valid. But this has not much use, pretty much the same as "MIN_TIME_STEPS_PER_FILE", was being used as part of a different algorithm
+- **Other Parameters**: Additional parameters that can be set to customize the data processing, such as speed thresholds or specific event markers.
+
+
+## Installation
+To install the necessary dependencies, run:
+
+```bash
+pip install -r requirements.txt
+```
+## Installation
+To install the necessary dependencies, run requirements.txt
