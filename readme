@@ -1,9 +1,7 @@
-
-
 # NGAFID Data Processor  
 
 ## Overview  
-The **NGAFID Data Processor** is a Python-based tool designed to process and analyze flight data from the **National General Aviation Flight Information Database (NGAFID)**. It enables users to parse, clean, and visualize flight data to identify patterns and anomalies effectively.  
+The **NGAFID Data Processor** is a Python-based repo designed to process and analyze flight data from the **National General Aviation Flight Information Database (NGAFID)**. It enables users to parse, clean, and visualize flight data to identify patterns and anomalies effectively.  
 
 ## Features  
 
@@ -31,4 +29,17 @@ Ensure you have Python installed, then install the required dependencies using:
 ```bash
 pip install -r requirements.txt
 ```  
+
+## Usage
+
+The main script to run the application is `main.py`. It includes methods to launch the GUI and process data automatically:
+
+- **launch_gui**: This method starts the graphical user interface for interactive data processing.
+- **process_auto**: This method processes the data automatically based on predefined configurations.
+
+To run the application, use the following command:
+
+```bash
+python main.py
+```
 

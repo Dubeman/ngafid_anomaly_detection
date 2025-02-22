@@ -127,6 +127,7 @@ def launch_gui():
                     EVENT_STATE = None
                     for key in DF_SECTIONS_DICT: # clear the df_sections_dict
                         DF_SECTIONS_DICT[key].clear()
+                    preprocessor.num_sections_saved = 0
 
 
             else:
@@ -190,6 +191,7 @@ def process_auto():
                         EVENT_STATE = None
                         for key in DF_SECTIONS_DICT:
                             DF_SECTIONS_DICT[key].clear()
+                        preprocessor.num_sections_saved = 0
             
                 else:
                     print(f"Skipping {os.path.basename(file_path)}...")
