@@ -1,7 +1,7 @@
 # NGAFID Data Processor  
 
 ## Overview  
-The **NGAFID Data Processor** is a Python-based repo designed to process and analyze flight data from the **National General Aviation Flight Information Database (NGAFID)**. It enables users to parse, clean, and visualize flight data to identify patterns and anomalies effectively.  
+The NGAFID Data Processor is a Python-based repo designed to process and analyze flight data from the National General Aviation Flight Information Database (NGAFID). It enables users to parse, clean, and visualize flight data to effectively identify patterns and anomalies.  
 
 ## Features  
 
