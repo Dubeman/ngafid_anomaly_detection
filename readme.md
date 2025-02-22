@@ -43,3 +43,16 @@ To run the application, use the following command:
 python main.py
 ```
 
+## File Checks
+The repository includes `file_checks.py` for testing flight data files:
+
+- **File Integrity Tests**: Checks for corruption and validates columns and data types.
+- **Data Consistency Checks**: Ensures data adheres to rules.
+- **Quick Visualization**: Visualizes time splits to identify irregularities.
+
+Run the checks with:
+
+```bash
+python file_checks.py
+```
+

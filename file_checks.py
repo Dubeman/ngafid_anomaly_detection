@@ -33,7 +33,14 @@ def calculate_total_files(json_file_path, directory_files):
         missing_files.extend([f for f in event.get('day_of_flights', []) if f not in directory_files])
         missing_files.extend([f for f in event.get('after_flights', []) if f not in directory_files])
 
+    #save the altered json file
+    altered_json_file_path = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/c37_cluster_events_altered.json'
+    with open(altered_json_file_path, 'w') as file:
+        json.dump(data, file, indent=4)
     return total_files, missing_files
+
+
+    
 
 def count_files_in_directory(directory_path):
     return [name for name in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, name)) and name.endswith('.csv')]
@@ -129,7 +136,7 @@ def main():
     
     non_openable_files_altered = check_files_open(altered_json_file_path, directory_path)
     log_non_openable_files(non_openable_files_altered, altered_json_file_path)
-    
+
     directory_files = count_files_in_directory(directory_path)
     plot_altitude_agl(directory_path, directory_files)
 

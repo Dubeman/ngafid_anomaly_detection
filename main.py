@@ -157,6 +157,27 @@ def launch_gui():
         print("GIF saved as demo.gif")
 
 def process_auto():
+    '''
+    Processes files in the specified load folder, applies preprocessing, and saves the results in the save folder.
+    This function performs the following steps:
+    1. Initializes the NGAFIDEventsPreprocessor with the load and save folder paths.
+    2. Retrieves all files from the load folder and sorts them.
+    3. Determines the starting index based on the last processed file.
+    4. Iterates over the sorted files starting from the determined index.
+    5. For each file:
+        - If the file is a .txt file, updates and closes the work order event.
+        - If the file is a .csv file, creates a new work order event and processes the data.
+    6. Optionally saves the processed frames as a GIF if the SAVE_FRAMES_AS_GIF flag is set.
+    Global Variables:
+    - EVENT_STATE: The current state of the event being processed.
+    - DF_SECTIONS_DICT: A dictionary to store sections of data frames.
+    Raises:
+    - json.decoder.JSONDecodeError: If there is an error decoding a JSON file.
+    Note:
+    - The function uses various global constants and paths that need to be defined elsewhere in the code.
+    - The function updates the EVENT_STATE and DF_SECTIONS_DICT global variables as it processes the files.
+    - The function prints log messages to the console to indicate the progress and status of the processing.
+    '''
     global EVENT_STATE, DF_SECTIONS_DICT
 
     preprocessor = NGAFIDEventsPreprocessor(LOAD_FOLDER_PATH, SAVE_FOLDER_PATH)
