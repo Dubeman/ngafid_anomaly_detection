@@ -151,8 +151,8 @@ if __name__ == "__main__":
     
     # Load your data
     data_path = "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C37.csv"
-    data_loading = DataLoading(data_path)
-    data = data_loading.load_data()
+    data_loading = DataLoading()
+    data = data_loading.load_data(data_path)
     data = data_loading.min_max_scaling(INPUT_COLUMNS)
     print(data.head(5))
 

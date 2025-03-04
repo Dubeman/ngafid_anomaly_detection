@@ -17,68 +17,86 @@ INPUT_COLUMNS = [
     'OAT', 'IAS', 'VSpd', 'NormAc', 'AltMSL'
 ]
 
-class BaseAnomalyDataset(torch.utils.data.Dataset):
-    """Base class for anomaly detection datasets."""
+# class BaseAnomalyDataset(torch.utils.data.Dataset):
+#     """Base class for anomaly detection datasets."""
     
-    def __init__(self, data: torch.Tensor, labels: Optional[torch.Tensor] = None):
-        """
-        Initialize the dataset.
+#     def __init__(self, data: torch.Tensor, labels: Optional[torch.Tensor] = None):
+#         """
+#         Initialize the dataset.
         
-        Args:
-            data (torch.Tensor): Input data tensor
-            labels (torch.Tensor, optional): Labels tensor if available
-        """
-        self.data = data
-        self.labels = labels
+#         Args:
+#             data (torch.Tensor): Input data tensor
+#             labels (torch.Tensor, optional): Labels tensor if available
+#         """
+#         self.data = data
+#         self.labels = labels
 
-    def __len__(self) -> int:
-        """Return the total number of samples."""
-        return len(self.data)
+#     def __len__(self) -> int:
+#         """Return the total number of samples."""
+#         return len(self.data)
 
-    def __getitem__(self, idx: int) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        """
-        Get a sample from the dataset.
+#     def __getitem__(self, idx: int) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+#         """
+#         Get a sample from the dataset.
         
-        Args:
-            idx (int): Index of the sample
+#         Args:
+#             idx (int): Index of the sample
             
-        Returns:
-            Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]: 
-                Either just the data tensor or a tuple of (data, label)
-        """
-        if self.labels is not None:
-            return self.data[idx], self.labels[idx]
-        return self.data[idx]
+#         Returns:
+#             Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]: 
+#                 Either just the data tensor or a tuple of (data, label)
+#         """
+#         if self.labels is not None:
+#             return self.data[idx], self.labels[idx]
+#         return self.data[idx]
 
 class DataLoading:
-    """Class for loading and preprocessing flight data for anomaly detection."""
+    """Class for loading and preprocessing flight data """
     
-    def __init__(self, data_path: str):
+    def __init__(self: str):
         """
         Initialize the DataLoading class.
         
         Args:
             data_path (str): Path to the data file
         """
-        self.data_path = data_path
+
         self.df: Optional[pd.DataFrame] = None
 
-    def load_data(self) -> pd.DataFrame:
+    def load_data(self, filepath=None) -> pd.DataFrame:
         """
         Load data from CSV file with optimized dtypes.
         
         Returns:
             pd.DataFrame: Loaded and preprocessed DataFrame
         """
-        df_test = pd.read_csv(self.data_path, nrows=100)
+        df_test = pd.read_csv(filepath, nrows=100)
         float_cols = [c for c in df_test if df_test[c].dtype == "float64"]
         float32_cols = {c: np.float32 for c in float_cols}
 
-        df = pd.read_csv(self.data_path, engine='c', dtype=float32_cols)
+        df = pd.read_csv(filepath, engine='c', dtype=float32_cols)
         df['id'] = df.id.astype('int32')
         self.df = df.dropna()
         print(df.head(5))
         return df
+    
+    def load_data_config(self,data_folder_path, config: dict) -> pd.DataFrame:
+        '''
+        Load data from a config file 
+        
+        '''
+
+        data = []
+        for event in config:
+            for file in event['before_flights']:
+                filepath = f"{data_folder_path}/{file}"
+                data.append(self.load_data(filepath))
+
+            for file in event['after_flights']:
+                data.append(self.load_data(file))
+        
+
+
     
     def min_max_scaling(self, input_columns: List[str], df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         """
