@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from tqdm import tqdm
+from tsai.all import ROCKET
 
 FEATURES = ['volt1', 'volt2', 'amp1', 'amp2', 'FQtyL', 'FQtyR', 'E1 FFlow',
             'E1 OilT', 'E1 OilP', 'E1 RPM', 'E1 CHT1', 'E1 CHT2', 'E1 CHT3',
@@ -320,6 +321,19 @@ def plot_padded_values(original_group, padded_group, title):
     plt.tight_layout()
     plt.savefig(f'/Users/manasdubey2022/Desktop/NGAFID/plots/{title}.png')
     plt.show()
+
+def create_rocket_features_max(normal_data, rocket):
+
+    max_features = []
+
+    for batch in tqdm(normal_data, desc="Creating ROCKET features", leave=False):
+
+        features = rocket(batch).cpu().numpy()
+        max_features.append(features[:, :rocket.n_kernels])
+
+
+    return np.concatenate(max_features, axis=0)
+
 
 
 

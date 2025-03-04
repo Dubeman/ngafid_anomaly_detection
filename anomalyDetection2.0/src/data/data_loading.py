@@ -127,6 +127,9 @@ class DataLoading:
 
         arr = df.loc[:, input_columns].values
         res = qt.transform(arr)
+        
+        df = df.copy()
+        
 
         for i, col in tqdm(enumerate(input_columns)):
             df.loc[:, col] = res[:, i]

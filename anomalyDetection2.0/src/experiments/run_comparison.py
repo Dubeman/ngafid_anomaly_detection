@@ -13,7 +13,7 @@ from tsai.all import ROCKET, create_rocket_features
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from src.data.data_loading import DataLoading
-# from src.data.utils.preprocessing import create_rocket_features_max
+from src.data.utils.preprocessing import create_rocket_features_max
 
 
 
@@ -93,13 +93,20 @@ def run_experiment(normal_data: torch.utils.data.DataLoader, anomaly_data: torch
             kss=rocket_params['kernel_sizes']
         ).to(device)
         print("ROCKET model initialized successfully")
+
+
+        # go through the normal and anomaly data and print the shapes of the data
+        for x in normal_data:
+            print(x.shape)
+            # print(y.shape)
+            break
         
         # Extract features
         print("\nExtracting features...")
         print("Processing normal data...")
-        normal_features = create_rocket_features(normal_data, rocket)
+        normal_features = create_rocket_features_max(normal_data, rocket)
         print("Processing anomaly data...")
-        anomalous_features = create_rocket_features(anomaly_data, rocket)
+        anomalous_features = create_rocket_features_max(anomaly_data, rocket)
         print(f"Features extracted successfully. Shape: {normal_features.shape}")
 
         # Run models
