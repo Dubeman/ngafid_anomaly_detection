@@ -46,7 +46,7 @@ def cross_validate_anomaly_detector(
             model = model_class(**params)
             model.fit(X_train)
             train_scores = model.score_samples(X_train)
-            threshold = calculate_threshold(train_scores)
+            threshold = calculate_threshold(train_scores, 1, True)
             test_scores = model.score_samples(X_test)
             y_pred = np.where(test_scores <= threshold, -1, 1)
             
@@ -57,6 +57,7 @@ def cross_validate_anomaly_detector(
                 best_score = current_score
                 best_params = params
                 best_model = model
+                
         
         # Use best model for final evaluation
         train_scores = best_model.score_samples(X_train)

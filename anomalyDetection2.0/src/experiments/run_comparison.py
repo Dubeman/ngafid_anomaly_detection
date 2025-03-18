@@ -9,7 +9,8 @@ import torch
 from src.utils.evaluation import cross_validate_anomaly_detector
 from src.utils.tuning import tune_ocsvm_params, tune_iforest_params
 import pandas as pd
-from tsai.all import ROCKET, create_rocket_features
+# from tsai.all import ROCKET, create_rocket_features
+from src.models.models import ROCKET
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from src.data.data_loading import DataLoading
