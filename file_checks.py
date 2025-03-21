@@ -40,6 +40,8 @@ def calculate_total_files(json_file_path, directory_files):
     return total_files, missing_files
 
 
+
+
     
 
 def count_files_in_directory(directory_path):
@@ -93,7 +95,29 @@ def plot_altitude_agl(directory_path, directory_files):
             logging.error(f"Error reading {file_name}: {e}")
 
 
+def check_input_columns(directory_path, directory_files):
+    INPUT_COLUMNS = [
+        'volt1', 'volt2', 'amp1', 'amp2', 'FQtyL', 'FQtyR',
+        'E1 FFlow', 'E1 OilT', 'E1 OilP', 'E1 RPM',
+        'E1 CHT1', 'E1 CHT2', 'E1 CHT3', 'E1 CHT4',
+        'E1 EGT1', 'E1 EGT2', 'E1 EGT3', 'E1 EGT4',
+        'OAT', 'IAS', 'VSpd', 'NormAc', 'AltMSL'
+    ]
+    
+    missing_columns_files = {}
 
+    for file_name in directory_files:
+        file_path = os.path.join(directory_path, file_name)
+        try:
+            df = pd.read_csv(file_path)
+            df.columns = df.columns.str.strip()
+            missing_columns = [col for col in INPUT_COLUMNS if col not in df.columns]
+            if missing_columns:
+                missing_columns_files[file_name] = missing_columns
+        except Exception as e:
+            logging.error(f"Error reading {file_name}: {e}")
+    
+    return missing_columns_files
 
 
 def setup_logging():
@@ -121,24 +145,50 @@ def main():
     
     json_file_path = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/c37_cluster_events.json'
     directory_path = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned'
+    c37_cleaned_all_agl = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned_all_agl'
+    c37_cleaned_all = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned_all'
+    c37_original = '/Users/manasdubey2022/Desktop/NGAFID/c_37'
     
-    result = perform_file_check(json_file_path, directory_path)
-    log_test_result(result, json_file_path)
+    # result = perform_file_check(json_file_path, directory_path)
+    # log_test_result(result, json_file_path)
     
-    non_openable_files = check_files_open(json_file_path, directory_path)
-    log_non_openable_files(non_openable_files, json_file_path)
+    # non_openable_files = check_files_open(json_file_path, directory_path)
+    # log_non_openable_files(non_openable_files, json_file_path)
     
-    # Check with the altered JSON file
-    altered_json_file_path = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/c37_cluster_events_altered.json'
+    # # Check with the altered JSON file
+    # altered_json_file_path = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/c37_cluster_events_altered.json'
     
-    altered_result = perform_file_check(altered_json_file_path, directory_path)
-    log_test_result(altered_result, altered_json_file_path)
-    
-    non_openable_files_altered = check_files_open(altered_json_file_path, directory_path)
-    log_non_openable_files(non_openable_files_altered, altered_json_file_path)
+    # altered_result = perform_file_check(altered_json_file_path, directory_path)
+    # log_test_result(altered_result, altered_json_file_path)
 
-    directory_files = count_files_in_directory(directory_path)
-    plot_altitude_agl(directory_path, directory_files)
+    #get all the csv files in the c37_cleaned_all_agl directory
+    # c37_files_original = count_files_in_directory(c37_original)
+    # print(c37_files_original)
+ 
+
+    # missing_columns_files = check_input_columns(c37_original, c37_files_original)
+    # if missing_columns_files:
+    #     logging.warning(f"Number of files with missing columns: {len(missing_columns_files)}")
+    # else:
+    #     logging.info("All files have the required columns.")
+
+    # #save the missing_columns_files as a json file
+    # missing_columns_files_json = '/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/missing_columns_files_original.json'
+    # with open(missing_columns_files_json, 'w') as file:
+    #     json.dump(missing_columns_files, file, indent=4)
+
+    #load the missing_columns_files_cleaned_all.json file and count the number of files with missing columns
+    with open('/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/metadata/missing_columns_files_cleaned_all.json', 'r') as file:
+        missing_columns_files_cleaned_all = json.load(file)
+
+    print(f"Number of files with missing columns in c37_cleaned_all: {len(missing_columns_files_cleaned_all)}")
+    
+    
+    # non_openable_files_altered = check_files_open(altered_json_file_path, directory_path)
+    # log_non_openable_files(non_openable_files_altered, altered_json_file_path)
+
+    # directory_files = count_files_in_directory(directory_path)
+    # plot_altitude_agl(directory_path, directory_files)
 
 if __name__ == "__main__":
     main()

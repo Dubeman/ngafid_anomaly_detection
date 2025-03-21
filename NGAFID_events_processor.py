@@ -460,7 +460,6 @@ class NGAFIDEventsPreprocessor:
             end_index = int(crossing_indices[i + 1])
             logging.info(f"Processing section from index {start_index} to {end_index}...")
             section_df = df.iloc[start_index:end_index]
-            # section_df = section_df[section_df['AltitudeAGL'] > cutoff]  # Ensure we keep only values above the cutoff
             
             if len(section_df) > min_time_steps:
                 df_list.append((section_df, start_index, end_index))
@@ -486,22 +485,16 @@ class NGAFIDEventsPreprocessor:
         ax.set_ylabel('Altitude AGL (ft)')
         ax.legend(loc='upper left', bbox_to_anchor=(1, 1), frameon=False)
         
-        # ax.text(0.95, 0.95, f'Time Threshold = {TIME_THRESHOLD} s', 
-        #         transform=ax.transAxes, fontsize=12, verticalalignment='top', horizontalalignment='right', 
-        #         bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
 
         # Plot the sections and vertical lines at crossing indices
         for section_df, start_index, end_index in df_list:
             ax.plot(section_df.index, section_df['AltitudeAGL'], color='red', label='Altitude AGL considered')
-            # ax.axvline(x=start_index, color='red', linestyle='--', label='Estimated flight sections')
             ax.axvline(x=end_index, color='red', linestyle='--')
 
         # Add original indices from df_list
         for section_df, start_index, end_index in df_list:
-            # ax.axvline(x=start_index, color='purple', linestyle='--', label='Index')
-            # ax.axvline(x=end_index, color='orange', linestyle='--', label='Index')
             ax.text(start_index, cutoff, f'{start_index}', color='purple', fontsize=10, verticalalignment='bottom', horizontalalignment='right')
-            # ax.text(end_index, cutoff, f'{end_index}', color='orange', fontsize=10, verticalalignment='bottom', horizontalalignment='right')
+
 
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
@@ -513,33 +506,32 @@ class NGAFIDEventsPreprocessor:
         axcolor = 'lightgoldenrodyellow'
         ax_min_time_steps = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor=axcolor)
         ax_cutoff = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=axcolor)
-        ax_time_threshold = plt.axes([0.25, 0.09, 0.65, 0.03], facecolor=axcolor)
+        # ax_time_threshold = plt.axes([0.25, 0.09, 0.65, 0.03], facecolor=axcolor)
         ax_save_button = plt.axes([0.8, 0.9, 0.1, 0.05])
 
         slider_min_time_steps = Slider(ax_min_time_steps, 'Min Time Steps', 1, 1000, valinit=MIN_TIME_STEPS_PER_FILE, valstep=10)
         slider_cutoff = Slider(ax_cutoff, 'Altitude Cutoff', 0, 5000, valinit=CUTOFF, valstep=1)
-        slider_time_threshold = Slider(ax_time_threshold, 'Time Threshold', 0, 2000, valinit=TIME_THRESHOLD, valstep=10)
+  #      slider_time_threshold = Slider(ax_time_threshold, 'Time Threshold', 0, 2000, valinit=TIME_THRESHOLD, valstep=10)
         save_button = Button(ax_save_button, 'Save Sections')
         plt.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)  # Adjust space equally on all sides
 
-        def update(val, save_frame=True):
+        def update(val, save_frame=False):
             nonlocal df_list
             if save_frame:
                 global frame_count
 
             min_time_steps = slider_min_time_steps.val
             cutoff = slider_cutoff.val
-            time_threshold = slider_time_threshold.val
+#            time_threshold = slider_time_threshold.val
 
             # Clear the current plot
             ax.clear()
 
             # Recalculate the crossing indices and sections
-            crossing_indices = self.get_crossing_indices(df, cutoff=cutoff, time_threshold=time_threshold)
+            crossing_indices = self.get_crossing_indices(df, cutoff=cutoff) # can include time threshold here
 
             crossing_indices = sorted(crossing_indices)
 
-            # crossing_indices = [index for index in crossing_indices if abs(df['AltitudeAGL'].iloc[index] - cutoff) < 80]
 
             df_list = []
             for i in range(len(crossing_indices) - 1):
@@ -553,16 +545,12 @@ class NGAFIDEventsPreprocessor:
             ax.plot(df.index, df['AltitudeAGL'], label='Altitude AGL original', color='blue')
             ax.axhline(y=cutoff, color='orange', linestyle='--', label=f'Cutoff = {cutoff} ft')
             ax.set_title(f"Altitude AGL for {original_file_name}")
-            # ax.set_xlabel('Index')
+
             ax.set_ylabel('Altitude AGL (ft)')
             ax.legend(loc='upper left', bbox_to_anchor=(1, 1), frameon=False)
-            # ax.text(0.95, 0.95, f'Time Threshold = {time_threshold} s', 
-            #     transform=ax.transAxes, fontsize=12, verticalalignment='top', horizontalalignment='right', 
-            #     bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
 
             for section_df, start_index, end_index in df_list:
                 ax.plot(section_df.index, section_df['AltitudeAGL'], color='red', label='Altitude AGL considered')
-                # ax.axvline(x=start_index, color='red', linestyle='--', label='Estimated flight sections')
                 ax.axvline(x=end_index, color='red', linestyle='--')
 
             for crossing_index in crossing_indices:
@@ -635,15 +623,15 @@ class NGAFIDEventsPreprocessor:
                 section_counter += 1
 
             #save the parameters (cutoff, time_threshold, min_time_steps) to a file
-            params = {'Cutoff': slider_cutoff.val, 'Time Threshold': slider_time_threshold.val, 'Min Time Steps': slider_min_time_steps.val}
-            save_parameters_to_file(params, PARAMS_SAVE_FILE_PATH)
-            logging.info(f"\033[94mSaved parameters to {slider_cutoff.val}, {slider_time_threshold.val}, {slider_min_time_steps.val} to {PARAMS_SAVE_FILE_PATH}...\033[0m")
+#            params = {'Cutoff': slider_cutoff.val, 'Time Threshold': slider_time_threshold.val, 'Min Time Steps': slider_min_time_steps.val}
+#            save_parameters_to_file(params, PARAMS_SAVE_FILE_PATH)
+            logging.info(f"\033[94mSaved parameters to {slider_cutoff.val}, {slider_min_time_steps.val} to {PARAMS_SAVE_FILE_PATH}...\033[0m")
             plt.close(fig)
             return section_counter # when the sections are saved, return the number of sections saved
 
         slider_min_time_steps.on_changed(update)
         slider_cutoff.on_changed(update)
-        slider_time_threshold.on_changed(update)
+#        slider_time_threshold.on_changed(update)
         save_button.on_clicked(lambda event: setattr(self, 'num_sections_saved', save_sections(event))) # Save the number of sections saved
 
         plt.show()

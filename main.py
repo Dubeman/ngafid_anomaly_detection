@@ -240,8 +240,8 @@ def process_auto():
 
 
 def main():
-    # launch_gui()
-    process_auto()
+    launch_gui()
+    # process_auto()
 
 if __name__ == "__main__":
     main()
