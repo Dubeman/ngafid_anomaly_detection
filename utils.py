@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 import uuid
+from IPython.display import display
 
 
 
@@ -177,9 +178,14 @@ def update_work_order_event(event_state, df_names_dict,CLUSTER_EVENTS_FILE_PATH,
 
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     # config = load_config('config.json')
     # # Define the path to the folder containing the CSV files
 
     # txt_file = "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/data/c37_cleaned_all/open_2017_04_17_close_2017_04_17_record.txt"
     # add_json_event(txt_file, config.get('EVENT_DEFINITION'), config.get('CLUSTER_EVENTS_FILE_PATH'))
+
+    df = pd.read_csv("/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv")
+    display(df)
+
+

@@ -669,13 +669,17 @@ class NGAFIDEventsPreprocessor:
         ax.legend(by_label.values(), by_label.keys())
 
         plt.show()
-
-
-
-            
-                    
+        
     def set_file_paths(self, file_paths):
         self.file_paths = file_paths
+
+    def json_dataloader(self):
+        """Load the data from the file paths."""
+        dataframes = []
+        for file_path in self.file_paths:
+            df = self.load_data(file_path)
+            dataframes.append(df)
+        return dataframes
 
 
     
