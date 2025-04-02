@@ -5,6 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from typing import List, Tuple, Optional, Union
 import torch
+import json
 
 from .utils.preprocessing import get_dataset, prepare_for_training
 
@@ -75,18 +76,32 @@ class DataLoading:
 
     def load_data(self, filepath=None) -> pd.DataFrame:
         """
-        Load data from CSV file with optimized dtypes.
+        Load data from CSV file with optimized dtypes and handle missing values.
         
         Returns:
             pd.DataFrame: Loaded and preprocessed DataFrame
         """
-        df_test = pd.read_csv(filepath, nrows=100)
-        float_cols = [c for c in df_test if df_test[c].dtype == "float64"]
-        float32_cols = {c: np.float32 for c in float_cols}
-
-        df = pd.read_csv(filepath, engine='c', dtype=float32_cols)
-        df['id'] = df.id.astype('int32')
-        self.df = df.dropna()
+        # First read the data without dtype specification to identify problematic values
+        df = pd.read_csv(filepath)
+        
+        # Replace 'NONE' and other non-numeric values with NaN
+        df = df.replace(['NONE', 'none', 'None', 'NULL', 'null', ''], np.nan)
+        
+        # Convert numeric columns to float32
+        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        for col in numeric_columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype(np.float32)
+        
+        # Handle the 'id' column separately
+        if 'id' in df.columns:
+            df['id'] = pd.to_numeric(df['id'], errors='coerce').astype('int32')
+        
+        # Drop rows with NaN values
+        df = df.dropna()
+        
+        self.df = df
+        print(f"Loaded data shape: {df.shape}")
+        print("\nFirst 5 rows of loaded data:")
         print(df.head(5))
         return df
     
