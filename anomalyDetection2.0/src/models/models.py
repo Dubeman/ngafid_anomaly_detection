@@ -49,10 +49,57 @@ class ROCKET(nn.Module):
         for i in progress_bar(range(self.n_kernels), display=self.verbose, leave=False):
             out = self.convs[i](x)
             _max = out.max(dim=-1)[0]
+            print("Max shape:", _max.shape)
+            print("Max:", _max)
             _ppv = torch.gt(out, 0).sum(dim=-1).float() / out.shape[-1]
             _output.append(_max)
             _output.append(_ppv)
         return torch.cat(_output, dim=1)
+    
+
+    def print_module_list(self):
+        """
+        Print the details of the nn.ModuleList (self.convs).
+        """
+        print(f"Number of kernels: {len(self.convs)}")
+        for i, conv in enumerate(self.convs):
+            print(f"Kernel {i + 1}:")
+            print(f"  Kernel Size: {conv.kernel_size}")
+            print(f"  Padding: {conv.padding}")
+            print(f"  Dilation: {conv.dilation}")
+            print(f"  Weight Shape: {conv.weight.shape}")
+            print(f"  Bias: {conv.bias.detach().cpu().numpy() if conv.bias is not None else None}")
+            #print the layer dimensions
+            print(f"  Layer Dimensions: {conv.weight.shape[0]} x {conv.weight.shape[1]} x {conv.weight.shape[2]}")
+            print("-" * 30)
+
+    
+
+    def get_kernel_responses(self, x):
+        """
+        Get the responses of each convolutional kernel for the input.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, c_in, seq_len).
+        
+        Returns:
+            List[torch.Tensor]: List of kernel responses for each convolutional layer.
+        """
+        kernel_responses = []
+        for conv in self.convs:
+            response = conv(x)  # Apply the convolution
+            kernel_responses.append(response)
+        return kernel_responses
+
+
+def main():
+        # Example usage
+    model = ROCKET(c_in=23, seq_len=4096, n_kernels=100, kss=[7, 9, 11])
+    print(model)
+
+
+if __name__ == "__main__":
+    main()
 
 
 

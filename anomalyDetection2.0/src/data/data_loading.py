@@ -63,6 +63,16 @@ class DataLoading:
 
         self.df: Optional[pd.DataFrame] = None
 
+    def load_json(self, filepath: str) -> dict:
+        """
+        Load data from a JSON file.
+        
+        Args:
+            filepath (str): Path to the JSON file """
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return data
+
     def load_data(self, filepath=None) -> pd.DataFrame:
         """
         Load data from CSV file with optimized dtypes.
