@@ -160,9 +160,23 @@ if __name__ == "__main__":
     # Load your data
     # data_path = "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C37.csv" # old kaggle data
     data_path = "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv" # more data
+
+
     data_loading = DataLoading()
     data = data_loading.load_data(data_path)
-    data = data_loading.min_max_scaling(INPUT_COLUMNS)
+    if data_path == "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv":
+        print(data.columns)
+        data['flight_id'] = data['flight_id'].astype(int) # convert to int
+        data['split_id'] = data['split_id'].astype(int) # convert to int
+        data['before_after'] = data['before_after'].astype(int) # convert to int
+
+        #rename split_id to split
+        data = data.rename(columns={'split_id': 'split'})
+        #rename flight_id to id
+        data = data.rename(columns={'flight_id': 'id'})
+
+
+    data = data_loading.min_max_scaling(INPUT_COLUMNS, data)
     print(data.head(5))
 
 
