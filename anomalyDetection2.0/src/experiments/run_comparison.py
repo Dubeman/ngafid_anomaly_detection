@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from sklearn.model_selection import KFold
 import numpy as np
 import torch
-from src.utils.evaluation import cross_validate_anomaly_detector
+from src.utils.evaluation import cross_validate_anomaly_detector, train_test_evaluate_model
 from src.utils.tuning import tune_ocsvm_params, tune_iforest_params
 import pandas as pd
 # from tsai.all import ROCKET, create_rocket_features
@@ -15,8 +15,9 @@ from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from src.data.data_loading import DataLoading
 from src.data.utils.preprocessing import create_rocket_features_max
+import json
 
-
+DATASET_NAME = "NGAFID_MC_C28"
 
 
 INPUT_COLUMNS = INPUT_COLUMNS = ['volt1',
@@ -57,7 +58,7 @@ def run_experiment(normal_data: torch.utils.data.DataLoader, anomaly_data: torch
     device = 'cpu'
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     rocket_params = {
-        'num_kernels': [100, 500, 1000, 5000],
+        'num_kernels': [500],
         'kernel_sizes': [7, 9, 11],
         'channels_in': 23,
         'sequence_length': 4096
@@ -94,6 +95,10 @@ def run_experiment(normal_data: torch.utils.data.DataLoader, anomaly_data: torch
             kss=rocket_params['kernel_sizes']
         ).to(device)
         print("ROCKET model initialized successfully")
+        if num_kernels == 500:
+            #save the model
+            torch.save(rocket.state_dict(), f'/Users/manasdubey2022/Desktop/NGAFID/Codebase/anomalyDetection2.0/src/models/saved_rocket_models/rocket_model_{num_kernels}_{DATASET_NAME}.pth')
+            print(f"ROCKET model with {num_kernels} kernels saved to /Users/manasdubey2022/Desktop/NGAFID/Codebase/anomalyDetection2.0/src/models/saved_rocket_models/rocket_model_{num_kernels}_{DATASET_NAME}.pth")
 
 
         # go through the normal and anomaly data and print the shapes of the data
@@ -108,47 +113,38 @@ def run_experiment(normal_data: torch.utils.data.DataLoader, anomaly_data: torch
         normal_features = create_rocket_features_max(normal_data, rocket)
         print("Processing anomaly data...")
         anomalous_features = create_rocket_features_max(anomaly_data, rocket)
-        print(f"Features extracted successfully. Shape: {normal_features.shape}")
 
-        # Run models
-        results = {}
+
+        print("Features extraction completed")
+        print(f"Normal features shape: {normal_features.shape}")
+        print(f"Anomalous features shape: {anomalous_features.shape}")
+
+
+
         
         # One-Class SVM
         print("\nTraining One-Class SVM...")
 
         print("Running cross-validation...")
-        _, ocsvm_avg = cross_validate_anomaly_detector(
-            OneClassSVM, 
-            normal_features, 
-            anomalous_features, 
-            kf,
-            ocsvm_param_grid
-        )
-        results['ocsvm'] = ocsvm_avg
+        ocsvm_results = train_test_evaluate_model(OneClassSVM, normal_features, anomalous_features, ocsvm_param_grid)
         print("One-Class SVM training completed")
+
+        #save the json results
+        with open(f'results/ocsvm_results_num_kernels_{num_kernels}_{DATASET_NAME}.json', 'w') as f:
+            json.dump(ocsvm_results, f)
         
         # Isolation Forest
         print("\nTraining Isolation Forest...")
 
         print("Running cross-validation...")
-        _, iforest_avg = cross_validate_anomaly_detector(
-            IsolationForest, 
-            normal_features, 
-            anomalous_features, 
-            kf,
-            iforest_param_grid
-        )
-        results['iforest'] = iforest_avg
+        iforest_results = train_test_evaluate_model(IsolationForest, normal_features, anomalous_features, iforest_param_grid)
         print("Isolation Forest training completed")
+        #save the json results
+        with open(f'results/iforest_results_num_kernels_{num_kernels}_{DATASET_NAME}.json', 'w') as f:
+            json.dump(iforest_results, f)
+        
         
         # Save results for this kernel configuration
-        print("\nSaving results...")
-        results_df = pd.DataFrame(results)
-        results_df.to_csv(f'results/comparison_results_num_kernels_{num_kernels}.csv')
-        print(f"Results saved to: results/comparison_results_num_kernels_{num_kernels}.csv")
-        
-        all_results[num_kernels] = results
-        print(f"\nCompleted experiment with {num_kernels} kernels")
     
     return all_results
 
@@ -157,49 +153,49 @@ if __name__ == "__main__":
     # Set the environment variable for MPS fallback
     os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
     
+
     # Load your data
-    # data_path = "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C37.csv" # old kaggle data
-    data_path = "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv" # more data
+    data_paths = ["/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C37.csv", "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C28.csv"]
+    for data_path in data_paths:
+    # data_path = "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv" # more data
+    # data_path = "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split_100_events.csv" # smaller more balanced data for 100 events worth
+        if data_path == "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C37.csv":
+            DATASET_NAME = "NGAFID_MC_C37"
+        elif data_path == "/Users/manasdubey2022/Desktop/NGAFID/Codebase/data/NGAFID_MC_C28.csv":
+            DATASET_NAME = "NGAFID_MC_C28"
+        elif data_path == "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv":
+            DATASET_NAME = "NGAFID_C37_split"
+        elif data_path == "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split_100_events.csv":
+            DATASET_NAME = "NGAFID_C37_split_100_events"
+        
+        data_loading = DataLoading()
+        data = data_loading.load_data(data_path)
+        data = data_loading.min_max_scaling(INPUT_COLUMNS, data)
+        data = data.dropna()
+        print(data.shape)
 
 
-    data_loading = DataLoading()
-    data = data_loading.load_data(data_path)
-    if data_path == "/Users/manasdubey2022/Desktop/NGAFID_Data_Processor/NGAFID_C37_split.csv":
-        print(data.columns)
-        data['flight_id'] = data['flight_id'].astype(int) # convert to int
-        data['split_id'] = data['split_id'].astype(int) # convert to int
-        data['before_after'] = data['before_after'].astype(int) # convert to int
+        folded_datasets = data_loading.get_folded_datasets('bce',data,5)
 
-        #rename split_id to split
-        data = data.rename(columns={'split_id': 'split'})
-        #rename flight_id to id
-        data = data.rename(columns={'flight_id': 'id'})
+        anomalies_loader, normal_loader = data_loading.create_anomaly_normal_loaders(folded_datasets, batch_size=32)
+        
 
 
-    data = data_loading.min_max_scaling(INPUT_COLUMNS, data)
-    print(data.head(5))
 
-
-    folded_datasets = data_loading.get_folded_datasets('bce',data,5)
-
-    anomalies_loader, normal_loader = data_loading.create_anomaly_normal_loaders(folded_datasets, batch_size=32)
-    
-
-    #print the size of the loaders
-    # print(len(anomalies_loader))
-    # print(len(normal_loader))
+        print(F"Running experiment for ROCKET {DATASET_NAME}...")
+        run_experiment(normal_loader, anomalies_loader)
 
 
 
     # Run experiment
-    results = run_experiment(normal_loader, anomalies_loader)
+    # results = run_experiment(normal_loader, anomalies_loader)
 
-    # Print results
-    for num_kernels, results in results.items():
-        print(f"\nResults for {num_kernels} kernels:")
-        for model, metrics in results.items():
-            print(f"\n{model.upper()} Results:")
-            for metric, (mean, std) in metrics.items():
-                print(f"{metric}: {mean:.4f} ± {std:.4f}")
+    # # Print results
+    # for num_kernels, results in results.items():
+    #     print(f"\nResults for {num_kernels} kernels:")
+    #     for model, metrics in results.items():
+    #         print(f"\n{model.upper()} Results:")
+    #         for metric, (mean, std) in metrics.items():
+    #             print(f"{metric}: {mean:.4f} ± {std:.4f}")
 
     

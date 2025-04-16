@@ -1,0 +1,1 @@
+{"training_performance": {"number of normal train samples": 1130, "normal_train_accuracy": 0.9893805309734514}, "test_performance": {"number of normal test samples": 283, "number of anomalous test samples": 976, "test_accuracy": 0.23113582208101668, "test_precision": 0.22534081796311148, "test_recall": 0.9929328621908127, "test_f1": 0.3673202614379085}}
