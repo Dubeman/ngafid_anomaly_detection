@@ -75,35 +75,27 @@ class DataLoading:
         return data
 
     def load_data(self, filepath=None) -> pd.DataFrame:
-        """
-        Load data from CSV file with optimized dtypes and handle missing values.
+        """Memory efficient loading"""
+        # Read only needed columns
+       
+        required_columns = INPUT_COLUMNS + ['id', 'split', 'before_after']
+        # Use efficient dtypes
+        # dtype_dict = {col: 'float32' for col in INPUT_COLUMNS}
+        tqdm.pandas(desc="Loading CSV")
+        df = pd.read_csv(
+            filepath,
+            engine='c'
+        ).progress_apply(lambda x: x)
         
-        Returns:
-            pd.DataFrame: Loaded and preprocessed DataFrame
-        """
-        # First read the data without dtype specification to identify problematic values
-        df = pd.read_csv(filepath)
-        
-        # Replace 'NONE' and other non-numeric values with NaN
-        df = df.replace(['NONE', 'none', 'None', 'NULL', 'null', ''], np.nan)
-        
-        # Convert numeric columns to float32
-        numeric_columns = df.select_dtypes(include=[np.number]).columns
-        for col in numeric_columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype(np.float32)
-        
-        # Handle the 'id' column separately
-        if 'id' in df.columns:
-            df['id'] = pd.to_numeric(df['id'], errors='coerce').astype('int32')
-        
-        # Drop rows with NaN values
-        df = df.dropna()
-        
-        self.df = df
-        print(f"Loaded data shape: {df.shape}")
-        print("\nFirst 5 rows of loaded data:")
-        print(df.head(5))
-        return df
+        df = df.replace(['NONE', 'none'], np.nan)
+        # df = df.dropna()
+        return df  # Don't store in state
+
+    def process_in_chunks(self, filepath=None, chunksize=10000):
+        """For very large datasets"""
+        for chunk in pd.read_csv(filepath, chunksize=chunksize):
+            processed_chunk = self.preprocess_chunk(chunk)
+            yield processed_chunk
     
     def load_data_config(self,data_folder_path, config: dict) -> pd.DataFrame:
         '''
@@ -125,40 +117,27 @@ class DataLoading:
     
     def min_max_scaling(self, input_columns: List[str], df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         """
-        Apply Min-Max scaling to specified columns.
-        
+        Apply Min-Max scaling to specified columns while preserving other columns.
+
         Args:
-            input_columns (List[str]): List of column names to scale
-            df (Optional[pd.DataFrame]): DataFrame to scale, uses self.df if None
-            
+            input_columns (List[str]): List of column names to scale.
+            df (Optional[pd.DataFrame]): DataFrame to scale, uses self.df if None.
+
         Returns:
-            pd.DataFrame: Scaled DataFrame
-            
-        Raises:
-            ValueError: If string values are found in numeric columns
+            pd.DataFrame: DataFrame with scaled values for input columns and original values for other columns.
         """
         df = self.df if df is None else df
+        
         qt = preprocessing.MinMaxScaler()
-        try:
-            qt.fit(df.loc[:, input_columns].sample(100000, random_state=0))
-        except ValueError as e:
-            if "could not convert string to float" in str(e):
-                problematic_string = str(e).split(": ")[1].strip("'")
-                print(f"Error: Could not convert string to float: '{problematic_string}'")
-                for col in input_columns:
-                    if problematic_string in df[col].astype(str).values:
-                        print(f"Found problematic string in column: '{col}'")
-            raise
+        qt.fit(df.loc[:, input_columns].sample(100000, random_state = 0 ))
 
         arr = df.loc[:, input_columns].values
         res = qt.transform(arr)
-        
-        df = df.copy()
-        
 
         for i, col in tqdm(enumerate(input_columns)):
             df.loc[:, col] = res[:, i]
 
+        print("Scaled data shape:", df.shape)
         return df
     
     def get_folded_datasets(self, MODEL_LOSS_TYPE: str, df: pd.DataFrame, NFOLD: int) -> List[Union[torch.utils.data.TensorDataset, Tuple[torch.utils.data.TensorDataset, torch.utils.data.TensorDataset]]]:
@@ -229,14 +208,14 @@ class DataLoading:
         Returns:
             Tuple[DataLoader, DataLoader]: Tuple containing (anomalies_loader, normal_loader)
         """
-        anomalies = []  # post maintenance (0)
-        normal_data = []  # pre maintenance (1)
+        anomalies = []  # post maintenance (1)
+        normal_data = []  # pre maintenance (0)
         
         for fold in folded_datasets:
             for data, label in fold:
-                if label == 1:
+                if label == 0:
                     normal_data.append(data.permute(1, 0))
-                else:
+                elif label == 1:
                     anomalies.append(data.permute(1, 0))
 
         anomalies_dataset = torch.stack(anomalies)

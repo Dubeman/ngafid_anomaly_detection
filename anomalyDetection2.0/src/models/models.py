@@ -49,8 +49,8 @@ class ROCKET(nn.Module):
         for i in progress_bar(range(self.n_kernels), display=self.verbose, leave=False):
             out = self.convs[i](x)
             _max = out.max(dim=-1)[0]
-            print("Max shape:", _max.shape)
-            print("Max:", _max)
+            # print("Max shape:", _max.shape)
+            # print("Max:", _max)
             _ppv = torch.gt(out, 0).sum(dim=-1).float() / out.shape[-1]
             _output.append(_max)
             _output.append(_ppv)
