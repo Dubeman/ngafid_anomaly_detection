@@ -1,58 +1,92 @@
-# NGAFID Data Processor  
+# NGAFID Data Processor
 
-## Overview  
-The NGAFID Data Processor is a Python-based repo designed to process and analyze flight data from the National General Aviation Flight Information Database (NGAFID). It enables users to parse, clean, and visualize flight data to effectively identify patterns and anomalies.  
+**Interactive Flight Data Annotation Tool for Anomaly Detection**
 
-## Features  
+*Masters Capstone Project - Anomaly Detection on National General Aviation Flight Information Database*
 
-The repository includes `NGAFID_events_processor.py`, a script for preprocessing and analyzing flight data. The key functionalities include:  
+![Interactive Annotation Interface](output.gif)
 
-- **Parsing flight data** from CSV files.  
-- **Data cleaning & preprocessing**, including type conversion, NaN removal, and validity filtering.  
-- **Visualization tools** to plot altitude profiles for entire flights and specific segments.  
-- **Flight segmentation**, identifying valid segments based on altitude and time thresholds.  
+## Overview
 
-## Configuration  
+The NGAFID Data Processor is an interactive matplotlib-based annotation tool developed for aviation safety analysis. This system enables domain experts to efficiently process and annotate flight data from the National General Aviation Flight Information Database (NGAFID) for anomaly detection research.
 
-The **`config.json`** file allows customization of data processing parameters to tailor the analysis.  
+## Key Features
 
-### Threshold Definitions  
+**Interactive Real-Time Annotation**
+- Live parameter adjustment with immediate visual feedback
+- Real-time flight segmentation based on configurable altitude thresholds
+- Interactive matplotlib interface with sliders for threshold tuning
 
-- **CUTOFF** – The minimum altitude required for a flight segment to be considered valid.  
-- **TIME_THRESHOLD** – The minimum duration for a valid flight segment. (Similar to `MIN_TIME_STEPS_PER_FILE`, originally used in a different algorithm.)  
-- **Other Parameters** – Additional settings like speed thresholds and event markers.  
+**Automated Flight Processing**
+- Intelligent flight phase detection and segmentation
+- Batch processing capabilities with resumable workflows
+- Event-based data organization with unique identifiers
 
-## Installation  
+**Professional Data Pipeline**
+- Configurable processing parameters via JSON configuration
+- Robust error handling and data validation
+- Automated frame capture for documentation and analysis
 
-Ensure you have Python installed, then install the required dependencies using:  
+## Configuration
+
+The system uses `config.json` for parameter customization:
+
+- **CUTOFF** - Minimum altitude threshold for valid flight segments (default: 100 ft)
+- **TIME_THRESHOLD** - Minimum duration for segment validation (default: 10 seconds)
+- **MIN_TIME_STEPS_PER_FILE** - Minimum data points required per segment (default: 90)  
+
+## Installation
+
+Install required dependencies:
 
 ```bash
 pip install -r requirements.txt
-```  
+```
 
 ## Usage
 
-The main script to run the application is `main.py`. It includes methods to launch the GUI and process data automatically:
-
-- **launch_gui**: This method starts the graphical user interface for interactive data processing.
-- **process_auto**: This method processes the data automatically based on predefined configurations.
-
-To run the application, use the following command:
+### Interactive Annotation Mode
+Launch the GUI interface for real-time flight data annotation:
 
 ```bash
 python main.py
 ```
 
-## File Checks
-The repository includes `file_checks.py` for testing flight data files:
+The interactive interface provides:
+- Real-time altitude profile visualization
+- Configurable threshold parameters via sliders
+- Immediate visual feedback for segmentation results
+- One-click export of validated flight segments
 
-- **File Integrity Tests**: Checks for corruption and validates columns and data types.
-- **Data Consistency Checks**: Ensures data adheres to rules.
-- **Quick Visualization**: Visualizes time splits to identify irregularities.
+### Automated Processing Mode
+For batch processing without GUI interaction, modify `main.py` to call `process_auto()` instead of `launch_gui()`.
 
-Run the checks with:
+## Data Validation
+
+The system includes comprehensive data validation through `file_checks.py`:
+
+- File integrity verification and column validation
+- Data consistency checks and anomaly detection
+- Quick visualization tools for data quality assessment
 
 ```bash
 python file_checks.py
 ```
+
+## Technical Implementation
+
+**Core Components:**
+- `NGAFID_events_processor.py` - Main processing engine with interactive GUI
+- `main.py` - Application entry point and workflow management
+- `utils.py` - Utility functions for file handling and configuration
+- `config.json` - System configuration and processing parameters
+
+**Key Technologies:**
+- Matplotlib for interactive visualization and annotation interface
+- Pandas for efficient flight data processing and manipulation
+- NumPy and SciPy for numerical computations and signal processing
+
+## Research Context
+
+This tool was developed as part of a Masters Capstone project focused on anomaly detection in aviation data. The interactive annotation capability enables domain experts to efficiently label flight data for machine learning model training and validation in aviation safety research.
 
